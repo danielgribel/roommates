@@ -32,7 +32,7 @@ public class Roommates {
             roommatesApp.load();
             roommatesApp.run();
         } catch (Exception e) {
-            
+            System.err.println(e);
         }
     }
     
@@ -40,7 +40,7 @@ public class Roommates {
         preferences = new ArrayList<List<Integer>>();
         availability = new ArrayList<AVAILABILITY>();
         try {
-            FileInputStream fstream = new FileInputStream("data/input1.tsv");
+            FileInputStream fstream = new FileInputStream("data/input3.tsv");
             DataInputStream in = new DataInputStream(fstream);
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
             String strLine;
@@ -82,7 +82,7 @@ public class Roommates {
             }
             x = nextPerson();
         }
-        print();
+        resultPhase1();
     }
     
     private int getHead(int id) {
@@ -91,6 +91,17 @@ public class Roommates {
             int head = personPreferences.get(i);
             if(head != -1) {
                 return head;
+            }
+        }
+        return -1;
+    }
+    
+    private int getSecond(int id) {
+        List<Integer> personPreferences = preferences.get(id);
+        for(int i = 0; i < personPreferences.size(); i++) {
+            int n = personPreferences.get(i);
+            if(n != -1 && n != getHead(id)) {
+                return n;
             }
         }
         return -1;
@@ -140,6 +151,33 @@ public class Roommates {
         }
     }
     
+    private boolean isAllListsSingle() {
+        for(int i = 0; i < preferences.size(); i++) {
+            if(!isListSingle(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    private boolean existEmptyList() {
+        for(int i = 0; i < preferences.size(); i++) {
+            if(isListEmpty(i)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private int nextListWithMultipleEntries() {
+        for(int i = 0; i < preferences.size(); i++) {
+            if(!isListSingle(i) && !isListEmpty(i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
     private void assignSemiEngaged(int id) {
         availability.set(id, AVAILABILITY.SEMIENGAGED);
     }
@@ -157,17 +195,6 @@ public class Roommates {
         return -1;
     }
     
-    private void print() {
-        /*for(int i = 0; i < preferences.size(); i++) {
-            System.out.print((i+1) + "\t" + availability.get(i) + "\t");
-            for(Integer id : preferences.get(i)) {
-                System.out.print((id+1) + " ");
-            }
-            System.out.println();
-        }*/
-        resultPhase1();
-    }
-    
     private void resultPhase1() {
         int numEmpty = 0;
         int numSingle = 0;
@@ -180,16 +207,93 @@ public class Roommates {
             }
         }
         if(numEmpty > 0) {
-            System.out.println("# result: no stable matching.");
+            System.out.println("- result: no stable matching.");
         }
         else if(numSingle == preferences.size()) {
-            System.out.println("# result: stable matching found:");
-            for(int i = 0; i < preferences.size()/2; i++) {
-                System.out.println("{" + (i+1) + "," + (getHead(i)+1) + "}");
-            }
+            System.out.println("- result: stable matching found:");
+            printFinalResult();
         }
         else {
-            System.out.println("# result: please embark to phase 2.");
+            System.out.println("- please embark to phase 2.");
+            phase2();
         }
     }
+    
+    private int getIdFromHead(int head) {
+        for(int i = 0; i < preferences.size(); i++) {
+            if(getHead(i) == head) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
+    private void phase2() {
+        while(!isAllListsSingle() && !existEmptyList()) {
+            int id = nextListWithMultipleEntries();
+            int head = getHead(id);
+            List<Integer> xSet = new ArrayList<Integer>();
+            List<Integer> ySet = new ArrayList<Integer>();
+            xSet.add(id);
+            ySet.add(head);
+            int second = getSecond(id);
+            while(!ySet.contains(second)) {
+                int nextX = getIdFromHead(second);
+                xSet.add(nextX);
+                ySet.add(second);
+                second = getSecond(nextX);
+            }
+            for(int i = 0; i < ySet.size(); i++) {
+                // @TODO: CHECK THIS
+                if(i == 0) {
+                    handleRotations(ySet.get(i), xSet.get(xSet.size()-1));
+                }
+                else {
+                    handleRotations(ySet.get(i), xSet.get(i-1));
+                }
+            }
+        }
+        if(existEmptyList()) {
+            System.out.println("- result: no stable matching.");
+        }
+        else {
+            System.out.println("- result: stable matching found:");
+            printFinalResult();
+        }
+    }
+    
+    private void handleRotations(int id, int removedFrom) {
+        List<Integer> list = preferences.get(id);
+        int removeFromIndex = list.indexOf(removedFrom);
+        for(int i = removeFromIndex+1; i < list.size(); i++) {
+            int n = list.get(i);
+            if(n != -1) {
+                removeFromList(n, id);
+                list.set(i, -1);
+            }
+        }
+    }
+    
+    private void removeFromList(int id, int removed) {
+        List<Integer> list = preferences.get(id);
+        int pos = list.indexOf(removed);
+        list.set(pos, -1);
+    }
+    
+    private void printFinalResult() {
+        for(int i = 0; i < preferences.size()/2; i++) {
+            System.out.println("{" + (i+1) + "," + (getHead(i)+1) + "}");
+        }
+    }
+    
+    private void printFullTable() {
+        for(int i = 0; i < preferences.size(); i++) {
+            System.out.print((i+1) + "\t" + availability.get(i) + "\t");
+            for(Integer id : preferences.get(i)) {
+                System.out.print((id+1) + " ");
+            }
+            System.out.println();
+        }
+    }
+    
 }
