@@ -59,11 +59,11 @@ public class Roommates {
             }
             in.close();
         } catch(Exception e) {
-            System.err.println("Error: " + e.getMessage());
+            System.err.println("Error loading input file: " + e.getMessage());
         }
     }
     
-    // phase1 phase 1 of roommates algorithm
+    // phase 1 of roommates algorithm
     private void phase1() {
         int x = nextPerson();
         while(x != -1) {
